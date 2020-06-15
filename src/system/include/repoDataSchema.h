@@ -93,10 +93,13 @@ typedef enum dat_system {
     dat_ads_pos_z,                ///< Satellite orbit position z (ECI)
     dat_ads_tle_epoch,            ///< Current TLE epoch, 0 if TLE is invalid
     dat_ads_tle_last,             ///< Las time position was propagated
-    dat_ads_q0,                  ///< Attitude quaternion (Inertial to body)
-    dat_ads_q1,                  ///< Attitude quaternion (Inertial to body)
-    dat_ads_q2,                  ///< Attitude quaternion (Inertial to body)
-    dat_ads_q3,                  ///< Attitude quaternion (Inertial to body)
+    dat_ads_q0,                  ///< Attitude quaternion estimation (Inertial to body)
+    dat_ads_q1,                  ///< Attitude quaternion estimation (Inertial to body)
+    dat_ads_q2,                  ///< Attitude quaternion estimation (Inertial to body)
+    dat_ads_q3,                  ///< Attitude quaternion estimation (Inertial to body)
+    dat_ads_omega_x,             ///< Attitude omega estimation (body)
+    dat_ads_omega_y,             ///< Attitude omega estimation (body)
+    dat_ads_omega_z,             ///< Attitude omega estimation (body)
     dat_tgt_q0,                  ///< Target quaternion (Inertial to body)
     dat_tgt_q1,                  ///< Target quaternion (Inertial to body)
     dat_tgt_q2,                  ///< Target quaternion (Inertial to body)
@@ -332,6 +335,7 @@ typedef union fvalue{
 #define DAT_OBC_OPMODE_REF_POINT     (4) ///< Point to vector
 #define DAT_OBC_OPMODE_NAD_POINT     (5) ///< Point to nadir
 #define DAT_OBC_OPMODE_DETUMB_MAG    (6) ///< Detumbling
+#define DAT_EST_OPMODE_KALMAN        (7) ///< Kalman Filter
 
 /** The repository's name */
 #define DAT_REPO_SYSTEM "dat_system"    ///< Status variables table name

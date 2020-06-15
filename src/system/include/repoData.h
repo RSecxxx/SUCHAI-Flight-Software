@@ -29,6 +29,9 @@
 #include "osSemphr.h"
 #include <repoDataSchema.h>
 
+// TODO: remove this command dependency
+#include "cmdDRP.h"
+
 typedef enum machine_action {
     ACT_PAUSE= 0,
     ACT_START,
@@ -260,5 +263,11 @@ void get_value_string(char* ret_string, char* c_type, char* buff);
  * @return
  */
 int get_sizeof_type(char* c_type);
+
+
+void _get_sat_quaterion(quaternion_t *q, dat_system_t index);
+void _set_sat_quaterion(quaternion_t *q,  dat_system_t index);
+void _get_sat_vector(vector3_t *r, dat_system_t index);
+void _set_sat_vector(vector3_t *r, dat_system_t index);
 
 #endif // DATA_REPO_H

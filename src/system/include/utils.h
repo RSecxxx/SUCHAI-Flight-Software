@@ -142,6 +142,13 @@ typedef union matrix3 {
 }matrix3_t;
 
 /**
+ * Calculates unit quaternion from a pure vector.
+ * @param axis vector of dimension 3.
+ * @param res equivalent quaternion.
+ */
+void vec_to_quat(vector3_t axis, quaternion_t * res);
+
+/**
  * Calculates equivalent quaternion from a rotation arround an axis.
  * @param axis vector of dimension 3 representing a rotation axis.
  * @param rot angle of rotation, in radians.
@@ -272,5 +279,7 @@ void mat3_vec3_mult(matrix3_t mat, vector3_t vec, vector3_t * res);
  * @param c diagonal value
  */
 void mat_set_diag(matrix3_t *m, double a, double b, double c);
+
+void eskf_integrate(quaternion_t * res, quaternion_t q, vector3_t omega, double dt);
 
 #endif //UTILS_H

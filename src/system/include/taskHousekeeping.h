@@ -21,6 +21,7 @@
 #include "osDelay.h"
 
 #include "repoCommand.h"
+#include "cmdSIM.h"
 
 void taskHousekeeping(void *param);
 

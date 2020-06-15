@@ -76,6 +76,17 @@ int log_init(log_level_t level, int node)
     return rc;
 }
 
+void vec_to_quat(vector3_t axis, quaternion_t * res)
+{
+    double rot = vec_norm(axis);
+    vector3_t u;
+    vec_cons_mult(1 / rot, &axis, &u);
+    res->scalar = cos(rot);
+    for (int i = 0; i < 3; ++i) {
+        res->vec[i] = u.v[i];
+    }
+}
+
 void axis_rotation_to_quat(vector3_t axis, double rot, quaternion_t * res )
 {
     rot *= 0.5;
@@ -224,4 +235,14 @@ void mat_set_diag(matrix3_t *m, double a, double b, double c)
     m->row0[0] = a; m->row0[1] = 0; m->row0[2] = 0;
     m->row1[0] = 0; m->row1[1] = b; m->row1[2] = 0;
     m->row2[0] = 0; m->row2[1] = 0; m->row2[2] = c;
+}
+
+
+void eskf_integrate(quaternion_t * res, quaternion_t q, vector3_t omega, double dt)
+{
+    vector3_t omega_dt;
+    vec_cons_mult(dt, &omega, &omega_dt);
+    quaternion_t q_omega_dt;
+    vec_to_quat(omega_dt, &q_omega_dt);
+    quat_mult(&q, &q_omega_dt, res);
 }

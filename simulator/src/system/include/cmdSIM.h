@@ -113,4 +113,6 @@ int sim_adcs_detumbling_mag(char* fmt, char* params, int nparams);
  */
 int sim_adcs_send_attitude(char* fmt, char* params, int nparams);
 
+int sim_kalman_estimate(char* fmt, char* params, int nparams);
+
 #endif //_CMDSIM_H
