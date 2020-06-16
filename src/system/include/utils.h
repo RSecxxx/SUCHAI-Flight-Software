@@ -195,6 +195,13 @@ void quat_conjugate(quaternion_t *q, quaternion_t *res);
 void quat_frame_conv(quaternion_t *q_rot_a2b, vector3_t *v_a, vector3_t *v_b);
 
 /**
+ * Quaternion to rotation matrix transformation
+ * @param q
+ * @param res
+ */
+void quat_to_dcm(quaternion_t * q, matrix3_t * res);
+
+/**
  * Calculate the inverse of the quaternion q
  * @param q quaternion
  * @param res inverse of quaternion
@@ -265,7 +272,11 @@ void vec_cons_mult(double a, vector3_t *vec, vector3_t *res);
  * @param vec input vector of dimensions
  * @param res
  */
-void mat3_vec3_mult(matrix3_t mat, vector3_t vec, vector3_t * res);
+void mat_vec_mult(matrix3_t mat, vector3_t vec, vector3_t * res);
+
+void mat_mat_mult(matrix3_t lhs, matrix3_t rhs, matrix3_t* res);
+
+void mat_sum(matrix3_t lhs, matrix3_t rhs, matrix3_t* res);
 
 /**
  * Set a diagonal 3x3 matrix
@@ -280,6 +291,14 @@ void mat3_vec3_mult(matrix3_t mat, vector3_t vec, vector3_t * res);
  */
 void mat_set_diag(matrix3_t *m, double a, double b, double c);
 
-void eskf_integrate(quaternion_t * res, quaternion_t q, vector3_t omega, double dt);
+void mat_transpose(matrix3_t* mat, matrix3_t* res);
+
+void mat6_mat6_mult(matrix3_t ** lhs, matrix3_t ** rhs, matrix3_t ** res);
+
+void eskf_integrate(quaternion_t q, vector3_t omega, double dt, quaternion_t * res);
+
+void eskf_compute_error(vector3_t omega, double dt, matrix3_t ** res);
+
+
 
 #endif //UTILS_H

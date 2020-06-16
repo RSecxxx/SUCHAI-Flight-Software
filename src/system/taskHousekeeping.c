@@ -52,11 +52,17 @@ void taskHousekeeping(void *param)
     tle_u = cmd_get_str("obc_get_tle");
     cmd_send(tle_u);
 
-    quaternion_t q_0;
-    for(int i=0; i < 3; ++i)
-        q_0.vec[i] = 0.0;
-    q_0.scalar = 1.0;
-    _set_sat_quaterion(&q_0, dat_ads_q0);
+    quaternion_t q0;
+    vector3_t  ombias0;
+
+    for(int i=0; i < 3; ++i) {
+        q0.vec[i] = 0.0;
+        ombias0.v[i] = 0.0;
+    }
+    q0.scalar = 1.0;
+
+    _set_sat_quaterion(&q0, dat_ads_q0);
+    _set_sat_vector(&ombias0, dat_ads_ombias_x);
 
     while(1)
     {

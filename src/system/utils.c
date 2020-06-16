@@ -80,11 +80,8 @@ void vec_to_quat(vector3_t axis, quaternion_t * res)
 {
     double rot = vec_norm(axis);
     vector3_t u;
-    vec_cons_mult(1 / rot, &axis, &u);
-    res->scalar = cos(rot);
-    for (int i = 0; i < 3; ++i) {
-        res->vec[i] = u.v[i];
-    }
+    vec_cons_mult(1.0 / rot, &axis, &u);
+    axis_rotation_to_quat(u, rot, res);
 }
 
 void axis_rotation_to_quat(vector3_t axis, double rot, quaternion_t * res )
@@ -155,6 +152,26 @@ void quat_frame_conv(quaternion_t *q_rot_a2b, vector3_t *v_a, vector3_t *v_b)
     v_b->v[2] = (2.0 * q1 * q3 + 2.0 * q0 * q2) * v_a->v[0] + (2 * q2 * q3 - 2.0 * q0 * q1) * v_a->v[1] + (2.0 * pow(q3, 2.0) + 2.0 * pow(q0, 2.0) - 1.0) * v_a->v[2];
 }
 
+void quat_to_dcm(quaternion_t * q, matrix3_t * res)
+{
+    double q1 = q->q[0];
+    double q2 = q->q[1];
+    double q3 = q->q[2];
+    double q4 = q->q[3];
+
+    res->m[0][0] = pow(q1, 2) - pow(q2, 2) - pow(q3, 2) + pow(q4, 2);
+    res->m[0][1] = 2 * (q1 * q2 + q3 * q4);
+    res->m[0][2] = 2 * (q1 * q3 - q2 * q4);
+
+    res->m[1][0] = 2 * (q1 * q2 - q3 * q4);
+    res->m[1][1] = -1.0 * pow(q1, 2) + pow(q2, 2) - pow(q3, 2) + pow(q4, 2);
+    res->m[1][2] =  2 * (q2 * q3 + q1 * q4);
+
+    res->m[2][0] = 2 * (q1 * q3 + q2 * q4);
+    res->m[2][1] = 2 * (q2 * q3 - q1 * q4);
+    res->m[2][2] = -1.0 * pow(q1, 2) - pow(q2, 2) + pow(q3, 2) + pow(q4, 2);
+}
+
 double vec_norm(vector3_t vec)
 {
     double res = 0.0;
@@ -218,7 +235,7 @@ void vec_cons_mult(double a, vector3_t *vec, vector3_t *res)
     }
 }
 
-void mat3_vec3_mult(matrix3_t mat, vector3_t vec, vector3_t * res)
+void mat_vec_mult(matrix3_t mat, vector3_t vec, vector3_t * res)
 {
     for(int i=0; i<3; ++i)
     {
@@ -230,6 +247,41 @@ void mat3_vec3_mult(matrix3_t mat, vector3_t vec, vector3_t * res)
     }
 }
 
+void mat_mat_mult(matrix3_t lhs, matrix3_t rhs, matrix3_t* res)
+{
+    for(int i=0; i<3; ++i)
+    {
+        for(int j=0; j<3; ++j)
+        {
+            res->m[i][j] = 0.0;
+            for(int k=0; k<3; ++k)
+            {
+                res->m[i][j] += lhs.m[i][k]*rhs.m[k][j];
+            }
+        }
+    }
+}
+
+void mat_sum(matrix3_t lhs, matrix3_t rhs, matrix3_t* res)
+{
+    for(int i=0; i<3; ++i) {
+        for(int j=0; j<3; ++j) {
+            res->m[i][j] = lhs.m[i][j] + rhs.m[i][j];
+        }
+    }
+}
+
+void mat_transpose(matrix3_t* mat, matrix3_t* res)
+{
+    for(int i=0; i<3; ++i)
+    {
+        for(int j=0; j<3; ++j)
+        {
+            res->m[i][j] = mat->m[j][i];
+        }
+    }
+}
+
 void mat_set_diag(matrix3_t *m, double a, double b, double c)
 {
     m->row0[0] = a; m->row0[1] = 0; m->row0[2] = 0;
@@ -237,12 +289,49 @@ void mat_set_diag(matrix3_t *m, double a, double b, double c)
     m->row2[0] = 0; m->row2[1] = 0; m->row2[2] = c;
 }
 
+void mat6_mat6_mult(matrix3_t ** lhs, matrix3_t ** rhs, matrix3_t ** res)
+{
+    for(int i=0; i<2; ++i)
+    {
+        for(int j=0; j<2; ++j)
+        {
+            matrix3_t temp1;
+            mat_mat_mult(lhs[i][0], rhs[0][j], &temp1);
+            matrix3_t temp2;
+            mat_mat_mult(lhs[i][1], rhs[1][j], &temp1);
+            mat_sum(temp1, temp2, &res[i][j]);
+        }
+    }
+}
 
-void eskf_integrate(quaternion_t * res, quaternion_t q, vector3_t omega, double dt)
+void eskf_integrate(quaternion_t q, vector3_t omega, double dt, quaternion_t * res)
 {
     vector3_t omega_dt;
     vec_cons_mult(dt, &omega, &omega_dt);
     quaternion_t q_omega_dt;
     vec_to_quat(omega_dt, &q_omega_dt);
     quat_mult(&q, &q_omega_dt, res);
+}
+
+void eskf_compute_error(vector3_t omega, double dt, matrix3_t ** res)
+{
+    matrix3_t  F[2][2];
+    // F11
+    vector3_t omega_dt;
+    vec_cons_mult(dt, &omega, &omega_dt);
+    quaternion_t dq_omegadt;
+    vec_to_quat(omega_dt, &dq_omegadt);
+    matrix3_t rwb;
+    quat_to_dcm(&dq_omegadt, &rwb);
+    mat_transpose(&rwb, &F[0][0]);
+    // F12
+    mat_set_diag(&F[0][1], -1.0*dt, -1.0*dt, -1.0*dt);
+    //F21
+    mat_set_diag(&F[1][0], 0.0, 0.0, 0.0);
+    //F22
+    mat_set_diag(&F[1][1], 1.0, 1.0, 1.0);
+//    for(int i=0; i<2; ++i)
+//        for(int j=0; j<2; ++j)
+//            res[i][j]
+
 }

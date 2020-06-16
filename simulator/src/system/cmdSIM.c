@@ -227,14 +227,14 @@ int sim_adcs_control_torque(char* fmt, char* params, int nparams)
     vector3_t torque_rot;
     vec_cons_mult(att_rot, &torq_dir, &torque_rot); //(AttitudeRotation * TorqueDirection)
     vector3_t P;
-    mat3_vec3_mult(P_quat, torque_rot, &P);  //P_quat_ * (AttitudeRotation * TorqueDirection)
+    mat_vec_mult(P_quat, torque_rot, &P);  //P_quat_ * (AttitudeRotation * TorqueDirection)
     vector3_t I;
-    mat3_vec3_mult(I_quat, error_integral, &I); //I_quat_ * error_integral
+    mat_vec_mult(I_quat, error_integral, &I); //I_quat_ * error_integral
     vector3_t omega_b;
     vector3_t P_o;
     vec_cons_mult(-1.0, &omega_b_est, NULL);
     vec_sum(omega_b_tar, omega_b_est, &omega_b);
-    mat3_vec3_mult(P_omega, omega_b, &P_o); //P_omega_ * (omega_b_tar_ - omega_b_est_);
+    mat_vec_mult(P_omega, omega_b, &P_o); //P_omega_ * (omega_b_tar_ - omega_b_est_);
 
     vector3_t control_torque_tmp, control_torque;
     vec_sum(P, I, &control_torque_tmp);
@@ -317,7 +317,7 @@ int sim_adcs_mag_moment(char* fmt, char* params, int nparams)
     vec_sum(omega_b_est, omega_b_tar, &error_angular_vel);
     vector3_t control_torque;
     vec_cons_mult(-1.0, &error_angular_vel, NULL);
-    mat3_vec3_mult(I_c, error_angular_vel, &control_torque);
+    mat_vec_mult(I_c, error_angular_vel, &control_torque);
     double inv_norm_torque = 1.0;
     double norm_torque = vec_norm(control_torque);
     if (norm_torque >= pow(10.0, -9.0))
@@ -497,10 +497,34 @@ int sim_adcs_send_attitude(char* fmt, char* params, int nparams)
 int sim_kalman_estimate(char* fmt, char* params, int nparams)
 {
     LOGI(tag, "Kalman Estimate")
-    // Get initial quaternion
+    // Predict Nominal
     quaternion_t q;
+    vector3_t w;
+    vector3_t wb;
+    vector3_t diffw;
     _get_sat_quaterion(&q, dat_ads_q0);
-//    eskf_integrate(quaternion_t * res, quaternion_t q, vector3_t omega, double dt)
+    _get_sat_vector(&w, dat_ads_acc_x);
+    _get_sat_vector(&wb, dat_ads_ombias_x);
 
+    quaternion_t q_est;
+    // TODO: get real time step from clock
+    double dt = 0.1;
+    vec_cons_mult(-1.0, &wb, NULL);
+    vec_sum(w, wb, &diffw);
+    eskf_integrate(q, diffw, dt, &q_est);
+    _set_sat_quaterion(&q_est, dat_ads_q0);
+//    _set_sat_vector(&omega, dat_ads_omega_x);
+
+    // Predict Error
+    matrix3_t P[2][2];
+    eskf_compute_error(diffw, dt, &P);
+//    vector3_t
+//
+//    matrix3_t mat_q;
+
+
+
+
+    return CMD_OK;
 
 }
