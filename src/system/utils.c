@@ -26,6 +26,10 @@ void (*log_function)(const char *lvl, const char *tag, const char *msg, ...);
 log_level_t log_lvl;
 uint8_t log_node;
 
+const double std_rw_w = 0.001;
+const double std_rn_w = 0.001;
+const double std_rn_mag = 0.001;
+
 void log_print(const char *lvl, const char *tag, const char *msg, ...)
 {
     va_list args;
@@ -235,6 +239,31 @@ void vec_cons_mult(double a, vector3_t *vec, vector3_t *res)
     }
 }
 
+void mat_inverse(matrix3_t mat, matrix3_t* res)
+{
+    double a, b, c, d, e, f, g, h, i;
+    a = mat.m[0][0]; b = mat.m[0][1], c = mat.m[0][2];
+    d = mat.m[1][0]; e = mat.m[1][1], f = mat.m[1][2];
+    g = mat.m[2][0]; h = mat.m[2][1], i = mat.m[2][2];
+
+    double A = (e*i - f*h);
+    double B = -1.0 * (d*i - f*g);
+    double C = (d*h -e*g);
+    double D = -1.0* (b*i - c*h);
+    double E = (a*i - c*g);
+    double F = -1.0 * (a*h -b*g);
+    double G = (b*f -c*e);
+    double H = -1.0 * (a*f - c*d);
+    double I = (a*e -b*d);
+    double detmat = a*A + b*B + c*C;
+
+    assert(abs(detmat) >= 1E-07);
+
+    res->m[0][0] = A/detmat; res->m[0][1] = D/detmat, res->m[0][2] = G/detmat;
+    res->m[1][0] = B/detmat; res->m[1][1] = E/detmat, res->m[1][2] = H/detmat;
+    res->m[2][0] = C/detmat; res->m[2][1] = F/detmat, res->m[2][2] = I/detmat;
+}
+
 void mat_vec_mult(matrix3_t mat, vector3_t vec, vector3_t * res)
 {
     for(int i=0; i<3; ++i)
@@ -289,7 +318,7 @@ void mat_set_diag(matrix3_t *m, double a, double b, double c)
     m->row2[0] = 0; m->row2[1] = 0; m->row2[2] = c;
 }
 
-void mat6_mat6_mult(matrix3_t ** lhs, matrix3_t ** rhs, matrix3_t ** res)
+void mat6_mat6_mult(matrix3_t lhs[2][2], matrix3_t rhs[2][2], matrix3_t res[2][2])
 {
     for(int i=0; i<2; ++i)
     {
@@ -304,6 +333,24 @@ void mat6_mat6_mult(matrix3_t ** lhs, matrix3_t ** rhs, matrix3_t ** res)
     }
 }
 
+void mat6_transpose(matrix3_t mat[2][2], matrix3_t res[2][2])
+{
+    for(int i=0; i<2; ++i) {
+        for (int j = 0; j < 2; ++j) {
+            mat_transpose(&mat[j][i], &res[i][j]);
+        }
+    }
+}
+
+void mat6_sum(matrix3_t lhs[2][2], matrix3_t rhs[2][2], matrix3_t res[2][2])
+{
+    for(int i=0; i<2; ++i) {
+        for (int j = 0; j < 2; ++j) {
+            mat_sum(lhs[i][j], rhs[i][j], &res[i][j]);
+        }
+    }
+}
+
 void eskf_integrate(quaternion_t q, vector3_t omega, double dt, quaternion_t * res)
 {
     vector3_t omega_dt;
@@ -313,9 +360,11 @@ void eskf_integrate(quaternion_t q, vector3_t omega, double dt, quaternion_t * r
     quat_mult(&q, &q_omega_dt, res);
 }
 
-void eskf_compute_error(vector3_t omega, double dt, matrix3_t ** res)
+void eskf_compute_error(vector3_t omega, double dt, matrix3_t P[2][2], matrix3_t Q[2][2])
 {
     matrix3_t  F[2][2];
+//    matrix3_t  Q[2][2];
+//    matrix3_t  P[2][2];
     // F11
     vector3_t omega_dt;
     vec_cons_mult(dt, &omega, &omega_dt);
@@ -330,8 +379,28 @@ void eskf_compute_error(vector3_t omega, double dt, matrix3_t ** res)
     mat_set_diag(&F[1][0], 0.0, 0.0, 0.0);
     //F22
     mat_set_diag(&F[1][1], 1.0, 1.0, 1.0);
-//    for(int i=0; i<2; ++i)
-//        for(int j=0; j<2; ++j)
-//            res[i][j]
 
+    // update Q
+    for(int i=0; i<2; ++i) {
+        for (int j = 0; j < 2; ++j) {
+            if (i == 0 && j == 0) {
+                double val = pow(std_rn_w, 2) * pow(dt, 2);
+                mat_set_diag(&Q[i][j], val, val, val);
+            } else if (i == 1 && j == 1) {
+                double val = pow(std_rw_w, 2) * dt;
+                mat_set_diag(&Q[i][j], val, val, val);
+            } else {
+                mat_set_diag(&Q[i][j], 0.0, 0.0, 0.0);
+            }
+        }
+    }
+
+    // update P
+    matrix3_t  Ft[2][2];
+    mat6_transpose(F, Ft);
+    matrix3_t  FP[2][2];
+    mat6_mat6_mult(F, P, FP);
+    matrix3_t  FPFt[2][2];
+    mat6_mat6_mult(FP, Ft, FPFt);
+    mat6_sum(FPFt, Q, P);
 }

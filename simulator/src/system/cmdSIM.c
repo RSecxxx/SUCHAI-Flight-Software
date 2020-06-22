@@ -517,10 +517,8 @@ int sim_kalman_estimate(char* fmt, char* params, int nparams)
 
     // Predict Error
     matrix3_t P[2][2];
-    eskf_compute_error(diffw, dt, &P);
-//    vector3_t
-//
-//    matrix3_t mat_q;
+    matrix3_t Q[2][2];
+    eskf_compute_error(diffw, dt, P, Q);
 
 
 

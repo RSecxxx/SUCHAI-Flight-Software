@@ -265,6 +265,8 @@ void vec_sum(vector3_t lhs, vector3_t rhs, vector3_t * res);
  */
 void vec_cons_mult(double a, vector3_t *vec, vector3_t *res);
 
+void mat_inverse(matrix3_t mat, matrix3_t* res);
+
 /**
  * Calculates the matrix, vector product of dimensions (3,3) and 3.
  * w = M * v, where M is a (3x3) matrix, v is the input vector and w the result.
@@ -293,12 +295,14 @@ void mat_set_diag(matrix3_t *m, double a, double b, double c);
 
 void mat_transpose(matrix3_t* mat, matrix3_t* res);
 
-void mat6_mat6_mult(matrix3_t ** lhs, matrix3_t ** rhs, matrix3_t ** res);
+void mat6_mat6_mult(matrix3_t lhs[2][2], matrix3_t rhs[2][2], matrix3_t res[2][2]);
+
+void mat6_transpose(matrix3_t  mat[2][2], matrix3_t res[2][2]);
+
+void mat6_sum(matrix3_t lhs[2][2], matrix3_t rhs[2][2], matrix3_t res[2][2]);
 
 void eskf_integrate(quaternion_t q, vector3_t omega, double dt, quaternion_t * res);
 
-void eskf_compute_error(vector3_t omega, double dt, matrix3_t ** res);
-
-
+void eskf_compute_error(vector3_t omega, double dt, matrix3_t  P[2][2], matrix3_t Q[2][2]);
 
 #endif //UTILS_H
