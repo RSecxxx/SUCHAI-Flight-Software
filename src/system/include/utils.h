@@ -265,7 +265,13 @@ void vec_sum(vector3_t lhs, vector3_t rhs, vector3_t * res);
  */
 void vec_cons_mult(double a, vector3_t *vec, vector3_t *res);
 
+void mat_skew(vector3_t vec, matrix3_t* res);
+
 void mat_inverse(matrix3_t mat, matrix3_t* res);
+
+void _mat_cons_mult(double  a, double * mat, double *res, int n_x, int n_y);
+
+void _mat_vec_mult(double * mat, double * vec, double * res, int n_x, int n_y);
 
 /**
  * Calculates the matrix, vector product of dimensions (3,3) and 3.
@@ -276,9 +282,15 @@ void mat_inverse(matrix3_t mat, matrix3_t* res);
  */
 void mat_vec_mult(matrix3_t mat, vector3_t vec, vector3_t * res);
 
+void _mat_mat_mult(double * lhs, double * rhs, double * res, int n_x, int n_y, int n_z);
+
 void mat_mat_mult(matrix3_t lhs, matrix3_t rhs, matrix3_t* res);
 
+void _mat_mat_sum(double * lhs, double * rhs, double * res, int n_x, int n_y);
+
 void mat_sum(matrix3_t lhs, matrix3_t rhs, matrix3_t* res);
+
+void _mat_set_diag(double * m, double val, int n_x, int n_y);
 
 /**
  * Set a diagonal 3x3 matrix
@@ -293,16 +305,15 @@ void mat_sum(matrix3_t lhs, matrix3_t rhs, matrix3_t* res);
  */
 void mat_set_diag(matrix3_t *m, double a, double b, double c);
 
+void _mat_transpose(double * mat, double * res, int n_i, int n_j);
+
+void _mat_copy(double * mat, double * res, int matx, int maty, int resx, int resy, int pi, int pj);
+
 void mat_transpose(matrix3_t* mat, matrix3_t* res);
-
-void mat6_mat6_mult(matrix3_t lhs[2][2], matrix3_t rhs[2][2], matrix3_t res[2][2]);
-
-void mat6_transpose(matrix3_t  mat[2][2], matrix3_t res[2][2]);
-
-void mat6_sum(matrix3_t lhs[2][2], matrix3_t rhs[2][2], matrix3_t res[2][2]);
 
 void eskf_integrate(quaternion_t q, vector3_t omega, double dt, quaternion_t * res);
 
-void eskf_compute_error(vector3_t omega, double dt, matrix3_t  P[2][2], matrix3_t Q[2][2]);
+void eskf_compute_error(vector3_t omega, double dt, double P[6][6], double Q[6][6]);
 
+void eskf_update_mag(vector3_t mag_sensor, vector3_t mag_i, double P[6][6], matrix3_t * R, quaternion_t * q, vector3_t * wb);
 #endif //UTILS_H

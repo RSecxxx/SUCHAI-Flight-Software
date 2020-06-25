@@ -239,6 +239,18 @@ void vec_cons_mult(double a, vector3_t *vec, vector3_t *res)
     }
 }
 
+void mat_skew(vector3_t vec, matrix3_t * res)
+{
+    res->m[1][0] = vec.v[2];
+    res->m[2][0] = -1.0 * vec.v[1];
+
+    res->m[0][1] = -1.0 * vec.v[2];
+    res->m[0][2] = vec.v[1];
+
+    res->m[2][1] = vec.v[0];
+    res->m[1][2] = -1.0 * vec.v[0];
+}
+
 void mat_inverse(matrix3_t mat, matrix3_t* res)
 {
     double a, b, c, d, e, f, g, h, i;
@@ -257,99 +269,125 @@ void mat_inverse(matrix3_t mat, matrix3_t* res)
     double I = (a*e -b*d);
     double detmat = a*A + b*B + c*C;
 
-    assert(abs(detmat) >= 1E-07);
+    assert(abs(detmat) >= 1E-25);
 
     res->m[0][0] = A/detmat; res->m[0][1] = D/detmat, res->m[0][2] = G/detmat;
     res->m[1][0] = B/detmat; res->m[1][1] = E/detmat, res->m[1][2] = H/detmat;
     res->m[2][0] = C/detmat; res->m[2][1] = F/detmat, res->m[2][2] = I/detmat;
 }
 
+void _mat_cons_mult(double  a, double * mat, double *res, int n_x, int n_y)
+{
+    for(int i=0; i < n_x*n_y; ++i) {
+        if(res != NULL)
+            res[i] = mat[i] * a;
+        else
+            mat[i] = mat[i] * a;
+    }
+}
+
+void _mat_vec_mult(double * mat, double * vec, double * res, int n_x, int n_y)
+{
+    int mati = 0;
+    for(int i=0; i< n_x; ++i)
+    {
+        res[i] = 0.0;
+        for(int j=0; j< n_y; ++j)
+        {
+            mati = (i * n_y) + j;
+            res[i] += mat[mati]*vec[j];
+        }
+    }
+}
+
 void mat_vec_mult(matrix3_t mat, vector3_t vec, vector3_t * res)
 {
-    for(int i=0; i<3; ++i)
-    {
-        res->v[i] = 0.0;
-        for(int j=0; j<3; ++j)
-        {
-            res->v[i] += mat.m[i][j]*vec.v[j];
+    _mat_vec_mult((double *) mat.m, (double *) vec.v, (double *) res->v,3, 3);
+}
+
+void _mat_mat_mult(double * lhs, double * rhs, double * res, int n_x, int n_y, int n_z)
+{
+    int ires=0, il=0, ir=0;
+    for(int i=0; i < n_x; ++i) {
+        for(int k=0; k < n_z; ++k) {
+            ires = (i*n_z) + k;
+            res[ires] = 0.0;
+            for(int j=0; j < n_y; ++j) {
+                il = (i*n_y) + j;
+                ir = (j*n_z) + k;
+                res[ires] += lhs[il]*rhs[ir];
+            }
         }
     }
 }
 
 void mat_mat_mult(matrix3_t lhs, matrix3_t rhs, matrix3_t* res)
 {
-    for(int i=0; i<3; ++i)
-    {
-        for(int j=0; j<3; ++j)
-        {
-            res->m[i][j] = 0.0;
-            for(int k=0; k<3; ++k)
-            {
-                res->m[i][j] += lhs.m[i][k]*rhs.m[k][j];
-            }
-        }
+    _mat_mat_mult((double *) lhs.m, (double *) rhs.m, (double *) res->m, 3, 3, 3);
+}
+
+void _mat_mat_sum(double * lhs, double * rhs, double * res, int n_x, int n_y)
+{
+    for(int i=0; i < n_x *n_y; ++i) {
+        res[i] = lhs[i] + rhs[i];
     }
 }
 
 void mat_sum(matrix3_t lhs, matrix3_t rhs, matrix3_t* res)
 {
-    for(int i=0; i<3; ++i) {
-        for(int j=0; j<3; ++j) {
-            res->m[i][j] = lhs.m[i][j] + rhs.m[i][j];
+    _mat_mat_sum((double *) lhs.m, (double *) rhs.m, (double *) res->m, 3, 3);
+}
+
+void _mat_transpose(double * mat, double * res, int n_x, int n_y)
+{
+    int index=0, index_t=0;
+    for(int i=0; i < n_x; ++i) {
+        for(int j=0; j < n_y; ++j) {
+            index = (n_y*i) + j;
+            index_t = (n_x*j) + i;
+            res[index_t] = mat[index];
+        }
+    }
+}
+
+void _mat_copy(double * mat, double * res, int matx, int maty, int resx, int resy, int pi, int pj)
+{
+    int i_mat=0, i_res=0;
+    for(int i=0; i < matx; ++i) {
+        for(int j=0; j < maty; ++j) {
+            i_mat = (matx*i) + j;
+            i_res = ((resx)*(i+pi)) + j + pj;
+            res[i_res] = mat[i_mat];
         }
     }
 }
 
 void mat_transpose(matrix3_t* mat, matrix3_t* res)
 {
-    for(int i=0; i<3; ++i)
-    {
-        for(int j=0; j<3; ++j)
-        {
-            res->m[i][j] = mat->m[j][i];
+    _mat_transpose((double *) mat->m, (double *) res->m, 3, 3);
+}
+
+void _mat_set_diag(double * m, double val, int n_x, int n_y)
+{
+    int mi = 0;
+    for(int i=0; i < n_x; ++i) {
+        for(int j=0; j < n_y; ++j) {
+            mi = (i*n_y) + j ;
+            if (i == j)
+                m[mi] = val;
+            else
+                m[mi] = 0.0;
         }
     }
 }
 
-void mat_set_diag(matrix3_t *m, double a, double b, double c)
+void mat_set_diag(matrix3_t * m, double a, double b, double c)
 {
     m->row0[0] = a; m->row0[1] = 0; m->row0[2] = 0;
     m->row1[0] = 0; m->row1[1] = b; m->row1[2] = 0;
     m->row2[0] = 0; m->row2[1] = 0; m->row2[2] = c;
 }
 
-void mat6_mat6_mult(matrix3_t lhs[2][2], matrix3_t rhs[2][2], matrix3_t res[2][2])
-{
-    for(int i=0; i<2; ++i)
-    {
-        for(int j=0; j<2; ++j)
-        {
-            matrix3_t temp1;
-            mat_mat_mult(lhs[i][0], rhs[0][j], &temp1);
-            matrix3_t temp2;
-            mat_mat_mult(lhs[i][1], rhs[1][j], &temp1);
-            mat_sum(temp1, temp2, &res[i][j]);
-        }
-    }
-}
-
-void mat6_transpose(matrix3_t mat[2][2], matrix3_t res[2][2])
-{
-    for(int i=0; i<2; ++i) {
-        for (int j = 0; j < 2; ++j) {
-            mat_transpose(&mat[j][i], &res[i][j]);
-        }
-    }
-}
-
-void mat6_sum(matrix3_t lhs[2][2], matrix3_t rhs[2][2], matrix3_t res[2][2])
-{
-    for(int i=0; i<2; ++i) {
-        for (int j = 0; j < 2; ++j) {
-            mat_sum(lhs[i][j], rhs[i][j], &res[i][j]);
-        }
-    }
-}
 
 void eskf_integrate(quaternion_t q, vector3_t omega, double dt, quaternion_t * res)
 {
@@ -360,47 +398,120 @@ void eskf_integrate(quaternion_t q, vector3_t omega, double dt, quaternion_t * r
     quat_mult(&q, &q_omega_dt, res);
 }
 
-void eskf_compute_error(vector3_t omega, double dt, matrix3_t P[2][2], matrix3_t Q[2][2])
+void eskf_compute_error(vector3_t omega, double dt, double P[6][6], double Q[6][6])
 {
-    matrix3_t  F[2][2];
-//    matrix3_t  Q[2][2];
-//    matrix3_t  P[2][2];
+//    matrix3_t  F[2][2];
+    double  F[6][6];
     // F11
     vector3_t omega_dt;
     vec_cons_mult(dt, &omega, &omega_dt);
     quaternion_t dq_omegadt;
     vec_to_quat(omega_dt, &dq_omegadt);
-    matrix3_t rwb;
+    matrix3_t rwb, temp;
     quat_to_dcm(&dq_omegadt, &rwb);
-    mat_transpose(&rwb, &F[0][0]);
+    mat_transpose(&rwb, &temp);
+    _mat_copy(temp.m, F, 3, 3, 6, 6, 0, 0);
     // F12
-    mat_set_diag(&F[0][1], -1.0*dt, -1.0*dt, -1.0*dt);
-    //F21
-    mat_set_diag(&F[1][0], 0.0, 0.0, 0.0);
-    //F22
-    mat_set_diag(&F[1][1], 1.0, 1.0, 1.0);
+    double diag_val = -1.0*dt;
+    mat_set_diag(&temp, diag_val, diag_val, diag_val);
+    _mat_copy(temp.m, F, 3, 3, 6, 6, 0, 3);
+//    //F21
+    mat_set_diag(&temp, 0.0, 0.0, 0.0);
+    _mat_copy(temp.m, F, 3,3,6,6, 3, 0);
+//    //F22
+    mat_set_diag(&temp, 1.0, 1.0, 1.0);
+    _mat_copy(temp.m, F,3,3,6,6, 3, 3);
 
     // update Q
     for(int i=0; i<2; ++i) {
         for (int j = 0; j < 2; ++j) {
             if (i == 0 && j == 0) {
                 double val = pow(std_rn_w, 2) * pow(dt, 2);
-                mat_set_diag(&Q[i][j], val, val, val);
+                mat_set_diag(&temp, val, val, val);
+                _mat_copy(temp.m, Q, 3,3,6,6, 0, 0);
             } else if (i == 1 && j == 1) {
                 double val = pow(std_rw_w, 2) * dt;
-                mat_set_diag(&Q[i][j], val, val, val);
+                mat_set_diag(&temp, val, val, val);
+                _mat_copy(temp.m, Q, 3,3,6,6, 3, 3);
             } else {
-                mat_set_diag(&Q[i][j], 0.0, 0.0, 0.0);
+                mat_set_diag(&temp, 0.0, 0.0, 0.0);
+                _mat_copy(temp.m, Q, 3,3,6,6, i*3, j*3);
             }
         }
     }
 
     // update P
-    matrix3_t  Ft[2][2];
-    mat6_transpose(F, Ft);
-    matrix3_t  FP[2][2];
-    mat6_mat6_mult(F, P, FP);
-    matrix3_t  FPFt[2][2];
-    mat6_mat6_mult(FP, Ft, FPFt);
-    mat6_sum(FPFt, Q, P);
+    double  Ft[6][6];
+    _mat_transpose(F, Ft, 6,6 );
+    double FP[6][6];
+    _mat_mat_mult(F, P, FP,6,6,6);
+    double FPFt[6][6];
+    _mat_mat_mult(FP, Ft, FPFt, 6,6,6);
+    _mat_mat_sum(FPFt, Q, P, 6, 6);
+}
+
+void eskf_update_mag(vector3_t mag_sensor, vector3_t mag_i, double P[6][6], matrix3_t *R, quaternion_t * q, vector3_t * wb)
+{
+    // Magnetic Jacobian
+    vec_normalize(&mag_i, NULL);
+    matrix3_t rwb;
+    quat_to_dcm(q, &rwb);
+    vector3_t mag_b;
+    mat_vec_mult(rwb, mag_i, &mag_b);
+    double H[3][6];
+    matrix3_t temp;
+
+    mat_skew(mag_b, &temp);
+    _mat_copy((double*) temp.m, (double*) H, 3, 3, 3, 6,0,0);
+    mat_set_diag(&temp, 0.0, 0.0, 0.0);
+    _mat_copy((double*) temp.m, (double*) H, 3, 3, 3, 6,0,3);
+
+    // Kalman Gain
+    double Ht[6][3];
+    _mat_transpose((double*) H, (double*) Ht, 3, 6);
+    double PHt[6][3];
+    _mat_mat_mult((double*) P, (double*) Ht, (double*) PHt, 6, 6, 3);
+    matrix3_t S1, S, SI;
+    _mat_mat_mult((double *)H, (double *) PHt, (double *) S1.m, 3, 6, 3);
+    double rval = pow(std_rn_mag,2);
+    mat_set_diag(R, rval, rval, rval);
+    mat_sum(S1, *R, &S);
+    mat_inverse(S, &SI);
+    double K[6][3];
+    _mat_mat_mult((double*) PHt, (double*) SI.m, (double*) K, 6, 3, 3);
+
+    // Error state update
+    vector3_t y, nmag_b;
+    vec_cons_mult(-1.0, &mag_b, &nmag_b);
+    vec_sum(mag_sensor, nmag_b, &y);
+    double dx[6];
+    _mat_mat_mult((double*) K, (double*) y.v, (double*)dx, 6 ,3 ,1);
+
+
+    // Error covariance update
+    double KH[6][6], I6[6][6], IKH[6][6], P1[6][6];
+    _mat_set_diag((double*) I6, 1.0, 6,6 );
+    _mat_mat_mult((double*) K, (double*) H, (double*) KH, 6 ,3, 6);
+    _mat_cons_mult(-1.0, (double *) KH, NULL,6, 6);
+    _mat_mat_sum((double*) I6, (double*) KH, (double*) IKH, 6, 6);
+    _mat_mat_mult((double*) IKH, (double*) P, (double*) P1, 6 ,6, 6);
+
+    // Auxiliar error state variables
+    vector3_t dtheta, dwb;
+    quaternion_t dq;
+    dtheta.v[0] = dx[0]; dtheta.v[1] = dx[1]; dtheta.v[2] = dx[2];
+    dwb.v[0] = dx[3]; dwb.v[1] = dx[4]; dwb.v[2] = dx[5];
+    vec_to_quat(dtheta, &dq);
+
+
+    // Injection of the observed error to the nominal state
+    quaternion_t q1;
+    vector3_t wb1;
+    quat_mult(q, &dq, &q1);
+    vec_sum(*wb, dwb, &wb1);
+    for(int i=0; i < 4; ++i) {
+        q->q[i] = q1.q[i];
+        if (i > 2) continue;
+        wb->v[i] = wb1.v[i];
+    }
 }

@@ -499,11 +499,12 @@ int sim_kalman_estimate(char* fmt, char* params, int nparams)
     LOGI(tag, "Kalman Estimate")
     // Predict Nominal
     quaternion_t q;
-    vector3_t w;
+    // TODO: get from accelerometer
+    vector3_t w ={0.1002623,  -0.10142402,  0.20332787};
     vector3_t wb;
     vector3_t diffw;
     _get_sat_quaterion(&q, dat_ads_q0);
-    _get_sat_vector(&w, dat_ads_acc_x);
+//    _get_sat_vector(&w, dat_ads_acc_x);
     _get_sat_vector(&wb, dat_ads_ombias_x);
 
     quaternion_t q_est;
@@ -516,9 +517,18 @@ int sim_kalman_estimate(char* fmt, char* params, int nparams)
 //    _set_sat_vector(&omega, dat_ads_omega_x);
 
     // Predict Error
-    matrix3_t P[2][2];
-    matrix3_t Q[2][2];
+    double P[6][6];
+    _mat_set_diag(P, 1.0,6, 6);
+    double Q[6][6];
+    _mat_set_diag(Q, 1.0,6, 6);
     eskf_compute_error(diffw, dt, P, Q);
+
+    matrix3_t R;
+    // TODO: get value from magsensor
+    vector3_t mag_sensor = {0.33757741, 0.51358994, 0.78883893};
+    // TODO: get value from magnetic model
+    vector3_t mag_i = {6723.12366721, 10229.07189747, 15710.68799647};
+    eskf_update_mag(mag_sensor, mag_i, P, &R, &q_est, &w);
 
 
 
