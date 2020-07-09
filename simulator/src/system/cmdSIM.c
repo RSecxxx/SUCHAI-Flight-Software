@@ -528,11 +528,9 @@ int sim_kalman_estimate(char* fmt, char* params, int nparams)
     vector3_t mag_sensor = {0.33757741, 0.51358994, 0.78883893};
     // TODO: get value from magnetic model
     vector3_t mag_i = {6723.12366721, 10229.07189747, 15710.68799647};
+
+    // TODO: call function separately with its own mesuerement freq
     eskf_update_mag(mag_sensor, mag_i, P, &R, &q_est, &w);
 
-
-
-
     return CMD_OK;
-
 }
